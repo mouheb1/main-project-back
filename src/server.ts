@@ -269,7 +269,7 @@ async function startServer() {
 
     httpServer.listen(PORT, () => {
       console.log(`[Server] WebSocket server running on http://localhost:${PORT}`);
-      console.log(`[Server] CORS enabled for: ${allowedOrigins.join(', ')}`);
+      console.log(`[Server] CORS enabled for: *`);
       console.log(`[Server] Health check: http://localhost:${PORT}/health`);
       console.log(`[Server] Teams API: http://localhost:${PORT}/api/teams`);
     });

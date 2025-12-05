@@ -6,8 +6,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all dependencies (including dev for build)
 RUN npm ci
+
+# Copy prisma schema first for client generation
+COPY prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
 
 # Copy source code
 COPY . .
@@ -26,8 +32,16 @@ COPY package*.json ./
 # Install production dependencies only
 RUN npm ci --only=production
 
+# Copy prisma schema and generate client
+COPY prisma ./prisma
+RUN npx prisma generate
+
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
+
+# Copy startup script
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 
 # Expose port
 EXPOSE 3009
@@ -36,5 +50,5 @@ EXPOSE 3009
 ENV NODE_ENV=production
 ENV PORT=3009
 
-# Start the application
-CMD ["node", "dist/server.js"]
+# Start with database migration and seed
+CMD ["./start.sh"]

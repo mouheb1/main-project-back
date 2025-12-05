@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PlayerManager } from './playerManager';
+import { seedDatabase, prisma } from './seed';
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -48,6 +49,41 @@ app.get('/health', (_req, res) => {
     players: playerManager.getPlayerCount(),
     uptime: process.uptime(),
   });
+});
+
+// Get all teams
+app.get('/api/teams', async (_req, res) => {
+  try {
+    const teams = await prisma.team.findMany({
+      orderBy: { score: 'desc' },
+    });
+    res.json(teams);
+  } catch (error) {
+    console.error('[Server] Error fetching teams:', error);
+    res.status(500).json({ error: 'Failed to fetch teams' });
+  }
+});
+
+// Update team score
+app.post('/api/teams/:id/score', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { points } = req.body;
+
+    if (typeof points !== 'number') {
+      return res.status(400).json({ error: 'Points must be a number' });
+    }
+
+    const team = await prisma.team.update({
+      where: { id },
+      data: { score: { increment: points } },
+    });
+
+    res.json(team);
+  } catch (error) {
+    console.error('[Server] Error updating team score:', error);
+    res.status(500).json({ error: 'Failed to update team score' });
+  }
 });
 
 // Create HTTP server
@@ -245,9 +281,22 @@ process.on('SIGINT', () => {
   });
 });
 
-// Start server
-httpServer.listen(PORT, () => {
-  console.log(`[Server] WebSocket server running on http://localhost:${PORT}`);
-  console.log(`[Server] CORS enabled for: ${allowedOrigins.join(', ')}`);
-  console.log(`[Server] Health check: http://localhost:${PORT}/health`);
-});
+// Start server with database initialization
+async function startServer() {
+  try {
+    // Run database seed on startup
+    await seedDatabase();
+
+    httpServer.listen(PORT, () => {
+      console.log(`[Server] WebSocket server running on http://localhost:${PORT}`);
+      console.log(`[Server] CORS enabled for: ${allowedOrigins.join(', ')}`);
+      console.log(`[Server] Health check: http://localhost:${PORT}/health`);
+      console.log(`[Server] Teams API: http://localhost:${PORT}/api/teams`);
+    });
+  } catch (error) {
+    console.error('[Server] Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -20,25 +20,11 @@ dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3009', 10);
 
-// Allow multiple frontend origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  process.env.CORS_ORIGIN,
-].filter(Boolean) as string[];
-
 // Initialize Express app
 const app = express();
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, false);
-    }
-  },
-  credentials: true,
+  origin: '*',
+  credentials: false,
 }));
 app.use(express.json());
 
@@ -97,15 +83,9 @@ const io = new Server<
   SocketData
 >(httpServer, {
   cors: {
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, false);
-      }
-    },
+    origin: '*',
     methods: ['GET', 'POST'],
-    credentials: true,
+    credentials: false,
   },
   pingTimeout: 60000,
   pingInterval: 25000,

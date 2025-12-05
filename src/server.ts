@@ -20,11 +20,27 @@ dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3009', 10);
 
+// Parse CORS origins from environment variable
+function getCorsOrigins(): string | string[] {
+  const corsOrigin = process.env.CORS_ORIGIN;
+  if (!corsOrigin || corsOrigin === '*') {
+    return '*';
+  }
+  // Support comma-separated origins
+  const origins = corsOrigin.split(',').map(o => o.trim());
+  return origins.length === 1 ? origins[0] : origins;
+}
+
+const corsOrigins = getCorsOrigins();
+const isWildcard = corsOrigins === '*';
+
 // Initialize Express app
 const app = express();
 app.use(cors({
-  origin: '*',
-  credentials: false,
+  origin: corsOrigins,
+  credentials: !isWildcard, // Only allow credentials with specific origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
 
@@ -83,9 +99,9 @@ const io = new Server<
   SocketData
 >(httpServer, {
   cors: {
-    origin: '*',
+    origin: corsOrigins,
     methods: ['GET', 'POST'],
-    credentials: false,
+    credentials: !isWildcard,
   },
   pingTimeout: 60000,
   pingInterval: 25000,
@@ -269,7 +285,7 @@ async function startServer() {
 
     httpServer.listen(PORT, () => {
       console.log(`[Server] WebSocket server running on http://localhost:${PORT}`);
-      console.log(`[Server] CORS enabled for: *`);
+      console.log(`[Server] CORS enabled for: ${Array.isArray(corsOrigins) ? corsOrigins.join(', ') : corsOrigins}`);
       console.log(`[Server] Health check: http://localhost:${PORT}/health`);
       console.log(`[Server] Teams API: http://localhost:${PORT}/api/teams`);
     });

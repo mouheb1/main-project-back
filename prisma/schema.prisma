@@ -1,3 +1,6 @@
+// Prisma schema synced with students-management/backend (leader-back)
+// Both projects share the same database
+
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
@@ -8,12 +11,74 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+  @@index([email])
+}
+
 model Team {
+  id           String            @id @default(cuid())
+  name         String            @unique
+  description  String?
+  avatarUrl    String?
+  color        String            @default("#3b82f6")
+  score        Int               @default(0)
+  members      User[]
+  achievements TeamAchievement[]
+  activities   Activity[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([score(sort: Desc)])
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String
+  icon        String
+  points      Int
+  teams       TeamAchievement[]
+  createdAt   DateTime          @default(now())
+}
+
+model TeamAchievement {
+  id            String      @id @default(cuid())
+  teamId        String
+  achievementId String
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  awardedAt     DateTime    @default(now())
+
+  @@unique([teamId, achievementId])
+  @@index([teamId])
+  @@index([achievementId])
+}
+
+model Activity {
   id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  color       String   @default("#3b82f6")
-  score       Int      @default(0)
+  type        String   // CHALLENGE_COMPLETED, POINTS_EARNED, ACHIEVEMENT_UNLOCKED, etc.
+  description String
+  points      Int      @default(0)
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  @@index([teamId])
+  @@index([createdAt(sort: Desc)])
 }

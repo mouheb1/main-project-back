@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 async function ensureTriggerExists() {
   console.log('[Seed] Ensuring PostgreSQL trigger exists...');
 
+  // Create or replace the notification function
   const createFunctionSQL = `
     CREATE OR REPLACE FUNCTION notify_team_score_change()
     RETURNS TRIGGER AS $$
@@ -22,19 +23,23 @@ async function ensureTriggerExists() {
       END IF;
       RETURN NEW;
     END;
-    $$ LANGUAGE plpgsql;
+    $$ LANGUAGE plpgsql
   `;
 
+  // Drop existing trigger (separate statement)
+  const dropTriggerSQL = `DROP TRIGGER IF EXISTS team_score_change_trigger ON "Team"`;
+
+  // Create the trigger (separate statement)
   const createTriggerSQL = `
-    DROP TRIGGER IF EXISTS team_score_change_trigger ON "Team";
     CREATE TRIGGER team_score_change_trigger
     AFTER UPDATE ON "Team"
     FOR EACH ROW
-    EXECUTE FUNCTION notify_team_score_change();
+    EXECUTE FUNCTION notify_team_score_change()
   `;
 
   try {
     await prisma.$executeRawUnsafe(createFunctionSQL);
+    await prisma.$executeRawUnsafe(dropTriggerSQL);
     await prisma.$executeRawUnsafe(createTriggerSQL);
     console.log('[Seed] PostgreSQL trigger created/updated successfully');
   } catch (error) {
